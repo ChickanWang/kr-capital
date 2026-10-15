@@ -16,22 +16,6 @@ A watchlist and screener for the S&P 100, running locally with one `docker compo
 - **Quality:** tests on the parts most likely to be silently wrong (versioning, splits, portfolio math)
   and CI checking lint, types, migrations and API/type drift.
 
-## AI Usage Throughout the Case Study
-
-Before getting started prompting Claude to start on coding, I chatted with it about how to model the data, subsequently which endpoints were needed from the data, and finally, what frontend features would exist. It was an iterative process, where I would let it draft a first pass, then review it and ask for changes. The data model was settled before coding; the UI and some ETL details changed as I used the app.
-
-A helpful Claude skill that I used was [grill-me](https://www.aihero.dev/skills-grill-me), where I essentially rubber-ducked to Claude until the mental model for the app I would build became fleshed out.
-
-## Rubric for Success
-
-To decide whether Claude's output was good enough, I checked 2 things:
-
-- **The code reads like a PR I'd approve.** I reviewed each change like a PR, if I couldn't explain or justify it, it went back for changes.
-- **The product works for someone using it.** I did a lot of manual testing, which is where most of the UI changes in the Frontend section came from.
-
-I also kept the scope small and expanded it step by step, rather than asking for everything at once and
-reviewing a large change I couldn't fully check.
-
 ## Tradeoffs
 
 **Where I went deep: data modelling.** I spent the most time on the schema, because it's the hardest part
@@ -100,13 +84,6 @@ S&P 100 universe (user-chosen tickers leave a screener with nothing to screen), 
 permanently, fetch only missing days on startup via grouped-daily (one call = every stock for one day),
 and run full refreshes overnight.
 
-## Assumptions
-- **Universe:** the S&P 100 as listed on Wikipedia (page dated 2026-09-21, fetched 2026-10-14). Later
-  index changes aren't picked up.
-- **Market cap** is the latest close × Polygon's share-class shares outstanding, so GOOG and GOOGL each
-  show their own class, not Alphabet's total.
-- **`data_version`** is when the app learned of a change, not when it happened.
-
 ## Data sourcing
 
 - **Hybrid loading:** an ETL preload, nightly refreshes, and on-demand gap fill. Pure ETL shows nothing
@@ -134,6 +111,13 @@ nothing at all without a key. So startup (`bootstrap`) works in two steps:
 minutes (one call per stock). Filling only on demand would leave the grid empty, because the grid needs
 every stock's latest close. The snapshot is ~1 MB in git and has to be refreshed by hand with `dump-seed`.
 
+## Assumptions
+- **Universe:** the S&P 100 as listed on Wikipedia (page dated 2026-09-21, fetched 2026-10-14). Later
+  index changes aren't picked up.
+- **Market cap** is the latest close × Polygon's share-class shares outstanding, so GOOG and GOOGL each
+  show their own class, not Alphabet's total.
+- **`data_version`** is when the app learned of a change, not when it happened.
+
 ## Product
 
 - **Baskets.** Themes, watchlists and portfolios are all named groups: one table, optional quantities; a
@@ -142,37 +126,44 @@ every stock's latest close. The snapshot is ~1 MB in git and has to be refreshed
   permanent, so authors can edit or delete their own.
 - **Analytics on request.** ~100 stocks × 500 days computes in milliseconds and is never stale.
 
-## Frontend
+## AI Usage Throughout the Case Study
 
-One screen (grid, chart, basket sidebar, company card drawer), built with Vite + React +
-TypeScript, plain CSS, AG Grid Community, TradingView Lightweight Charts, plain `fetch` (TanStack Query
-is unnecessary for a handful of endpoints).
+Before getting started prompting Claude to start on coding, I chatted with it about how to model the data, subsequently which endpoints were needed from the data, and finally, what frontend features would exist. It was an iterative process, where I would let it draft a first pass, then review it and ask for changes. The data model was settled before coding; the UI and some ETL details changed as I used the app.
 
-- **Chart:** compare up to five stocks. Price axis $, $ log (default when comparing:
-  equal distances are equal % moves) or YoY %. A "% change since range start" view was replaced: easy to
-  misread and duplicated cumulative return.
-- **Annotations on the chart** are clickable dots; text labels were tried and piled up.
-- **Company card** opens from ⓘ, the chart button or the annotations column (double-click alone was too
-  hidden). History compares consecutive versions, grouping first-time fields into one "Added:" line.
-- **Adding to baskets** went through "select rows, then add" (an empty basket filtered every row out),
-  then search only (one at a time), then ★ in the grid with a Members only / All stocks toggle.
-- **Portfolio panel** in the bottom area (the sidebar had no room): value, return, volatility (σ × √252),
-  max drawdown, best/worst day, holdings with weight and contribution (contributions sum to the daily
-  return). Panels resize; sizes reset on refresh because remembered sizes made awkward layouts stick.
+A helpful Claude skill that I used was [grill-me](https://www.aihero.dev/skills-grill-me), where I essentially rubber-ducked to Claude until the mental model for the app I would build became fleshed out.
 
-## Testing
+## Rubric for Success
 
-Tests cover what is most likely to be silently wrong: versioning (renames, ticker reuse), price
-versioning and splits, `topup` and refresh (including a refused day), returns and portfolio math,
-annotations and gap detection. Polygon is faked with fixtures; API tests use a real Postgres. CI runs
-ruff, mypy, pytest, migration/model and OpenAPI/type drift checks, and the frontend lint and build. The
-frontend was checked by hand; it has no tests.
+To decide whether Claude's output was good enough, I checked 2 things:
+
+- **The code reads like a PR I'd approve.** I reviewed each change like a PR, if I couldn't explain or justify it, it went back for changes.
+- **The product works for someone using it.** I did a lot of manual testing, which is where most of the UI changes came from.
+
+I also kept the scope small and expanded it step by step, rather than asking for everything at once and
+reviewing a large change I couldn't fully check.
+
+## Data Validation
+
+Checking for data errors stopped at unit tests and hand calculations; there isn't an automated scan of the
+data itself. The cheapest fix with the biggest payoff would be an automated data-quality check in the ETL, 
+for example flagging any daily move over 50%.
+
+Examples of checks it could run after each job, flagging rows instead of blocking the load:
+
+- **Price jumps:** a daily move over a threshold (e.g. 50%) that no known split explains.
+- **Bar sanity:** low ≤ open, close ≤ high; prices above zero; volume not negative and not zero on a
+  trading day.
+- **Gaps:** a stock missing a trading day that the other stocks have (`topup` doesn't fill these)
+- **Stale data:** the same close and volume for several days in a row, which usually means a frozen feed.
+- **Coverage:** every ticker in the universe file has a current instrument row and recent prices.
+
+This is probably the most important step before productionizing.
 
 ## Next steps
 
 Given more time to productionize this project, next steps could include
 
-- Data validation: automated checks in the ETL (see Data Validation below); the most important one.
+- Data validation: automated checks in the ETL (see Data Validation above); the most important one.
 
 - Coverage: user-added tickers, the S&P 500 on a paid tier, dated index membership.
 
@@ -209,20 +200,3 @@ app:
 **Infrastructure as it grows.** Run the ETL separately from the API; move to events or a queue so new
 prices trigger the jobs that depend on them; add read replicas or a warehouse for analytics and caching
 for the busiest endpoints; and monitor job failures and stale data, with alerts.
-
-## Data Validation
-
-Checking for data errors stopped at unit tests and hand calculations; there isn't an automated scan of the
-data itself. The cheapest fix with the biggest payoff would be an automated data-quality check in the ETL, 
-for example flagging any daily move over 50%.
-
-Examples of checks it could run after each job, flagging rows instead of blocking the load:
-
-- **Price jumps:** a daily move over a threshold (e.g. 50%) that no known split explains.
-- **Bar sanity:** low ≤ open, close ≤ high; prices above zero; volume not negative and not zero on a
-  trading day.
-- **Gaps:** a stock missing a trading day that the other stocks have (`topup` doesn't fill these)
-- **Stale data:** the same close and volume for several days in a row, which usually means a frozen feed.
-- **Coverage:** every ticker in the universe file has a current instrument row and recent prices.
-
-This is probably the most important step before productionizing.
