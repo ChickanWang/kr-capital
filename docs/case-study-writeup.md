@@ -47,9 +47,6 @@ Finally, I decided to skip creating multiple users, and set it to a default "ana
 
 - **Identity.** Each stock has a permanent UUID; ticker and FIGI are versioned since they can change. 
   The ETL matches by FIGI, then ticker, so a rename keeps its UUID; If a ticker moves to another company, the old holder's ticker becomes NULL. 
-- **Other.** No raw-payload layer (worth adding with more sources). SIC rather than GICS industries.
-  Postgres for constraints; FastAPI + SQLAlchemy + Alembic over Django for explicit modelling and a typed
-  OpenAPI contract.
 
 ### Versioned data ("as is" and "as was")
 
@@ -119,7 +116,7 @@ nothing at all without a key. So startup (`bootstrap`) works in two steps:
   days after the newest stored bar. It stops at the first day Polygon refuses (the free plan serves a day's bars only after midnight ET) and the next run picks it
   up.
 
-**Why not the alternatives.** Running the full `prices` refresh on startup is correct but takes ~20
+**Alternatives Considered.** Running the full `prices` refresh on startup is correct but takes ~20
 minutes (one call per stock). Filling only on demand would leave the grid empty, because the grid needs
 every stock's latest close. The snapshot is ~1 MB in git and has to be refreshed by hand with `dump-seed`.
 
