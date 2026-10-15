@@ -4,9 +4,9 @@ Link to [README](../README.md).
 
 ## AI Usage Throughout the Case Study
 
-Before getting started prompting Claude to start on coding, I chatted with it about how to model the data, subsequently which endpoints were needed from the data, and finally, what frontend features would exist. It was an iterative process, where I would let it draft a first pass, then reviewed it and asked for changes. The data model was settled before coding; the UI and some ETL details changed as I used the app.
+Before getting started prompting Claude to start on coding, I chatted with it about how to model the data, subsequently which endpoints were needed from the data, and finally, what frontend features would exist. It was an iterative process, where I would let it draft a first pass, then review it and ask for changes. The data model was settled before coding; the UI and some ETL details changed as I used the app.
 
-A helpful Claude skill that I used was [grill-me](https://www.aihero.dev/skills-grill-me), where I essentially rubber duckyed to Claude until the mental model for the app I would build became fleshed out.
+A helpful Claude skill that I used was [grill-me](https://www.aihero.dev/skills-grill-me), where I essentially rubber-ducked to Claude until the mental model for the app I would build became fleshed out.
 
 ## Rubric for Success
 
