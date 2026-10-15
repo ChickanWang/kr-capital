@@ -8,7 +8,10 @@ import { PriceChart } from './components/PriceChart'
 import { MAX_SELECTED } from './constants'
 import { useDragSize } from './useDragSize'
 
-const sidebarMax = () => 480
+// Width always left for the grid and chart, so a wide sidebar can't squeeze them out.
+const MAIN_MIN = 640
+const SIDEBAR_MIN = 180
+const sidebarMax = () => Math.max(SIDEBAR_MIN, Math.min(480, window.innerWidth - MAIN_MIN))
 // Room kept above the bottom panel: top bar, basket toolbar, at least ~5 grid rows, drag handle.
 const SPACE_ABOVE_BOTTOM = 330
 const BOTTOM_MIN = 220
@@ -19,6 +22,7 @@ function subscribeResize(onChange: () => void) {
   return () => window.removeEventListener('resize', onChange)
 }
 const windowHeight = () => window.innerHeight
+const windowWidth = () => window.innerWidth
 const sidebarFromPointer = (e: MouseEvent) => e.clientX
 const bottomFromPointer = (e: MouseEvent) => window.innerHeight - e.clientY - 12
 
@@ -39,7 +43,7 @@ export default function App() {
   const noticeTimer = useRef<number>(undefined)
   const [sidebarWidth, startSidebarDrag] = useDragSize({
     initial: 240,
-    min: 180,
+    min: SIDEBAR_MIN,
     max: sidebarMax,
     fromPointer: sidebarFromPointer,
     cursor: 'col-resize',
@@ -54,6 +58,9 @@ export default function App() {
   // Re-clamp the remembered height when the window shrinks, so the panel never covers the grid.
   const viewportHeight = useSyncExternalStore(subscribeResize, windowHeight)
   const bottom = Math.min(bottomHeight, Math.max(BOTTOM_MIN, viewportHeight - SPACE_ABOVE_BOTTOM))
+  // Same for the sidebar when the window narrows.
+  const viewportWidth = useSyncExternalStore(subscribeResize, windowWidth)
+  const sidebar = Math.min(sidebarWidth, Math.max(SIDEBAR_MIN, viewportWidth - MAIN_MIN))
   // 'auto' shows the portfolio when the active basket is one, otherwise stock prices.
   const [bottomView, setBottomView] = useState<'auto' | 'stocks' | 'portfolio'>('auto')
 
@@ -106,7 +113,7 @@ export default function App() {
   )
 
   return (
-    <div className="app" style={{ gridTemplateColumns: `${sidebarWidth}px minmax(0, 1fr)` }}>
+    <div className="app" style={{ gridTemplateColumns: `${sidebar}px minmax(0, 1fr)` }}>
       <header className="topbar">
         <h1>KR Capital · S&amp;P 100 Watchlist</h1>
         <span className="muted">
@@ -123,7 +130,7 @@ export default function App() {
       />
       <div
         className="resizer"
-        style={{ left: sidebarWidth - 3 }}
+        style={{ left: sidebar - 3 }}
         onMouseDown={startSidebarDrag}
         title="Drag to resize the sidebar"
       />
@@ -150,7 +157,12 @@ export default function App() {
           <InstrumentGrid
             rows={rows}
             onFocus={setFocused}
-            onSelect={setSelected}
+            onSelect={(tickers) => {
+              setSelected(tickers)
+              // Ticking a box doesn't fire a row click, so chart a lone ticked stock explicitly,
+              // and clear the chart when nothing is ticked.
+              if (tickers.length <= 1) setFocused(tickers[0] ?? null)
+            }}
             onOpen={setCard}
             onLimit={() =>
               showNotice(`You can compare up to ${MAX_SELECTED} stocks. Deselect one to pick another.`)

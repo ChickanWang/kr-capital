@@ -73,6 +73,7 @@ input:focus, textarea:focus { outline: 1px solid var(--accent); }
 .main {
   display: grid;
   grid-template-rows: minmax(0, 1fr) auto auto; /* grid, drag handle, bottom panel */
+  grid-template-columns: minmax(0, 1fr); /* one column the width of .main, never of its content */
   gap: 0;
   padding: 12px;
   min-height: 0;
@@ -81,12 +82,12 @@ input:focus, textarea:focus { outline: 1px solid var(--accent); }
 .grid { min-height: 140px; }
 .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; }
 .panel-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
-.controls { display: flex; gap: 12px; }
+.controls { display: flex; gap: 12px; flex-wrap: wrap; }
 .button-group { display: flex; }
 .button-group button { border-radius: 0; margin-left: -1px; }
 .button-group button:first-child { border-radius: 4px 0 0 4px; }
 .button-group button:last-child { border-radius: 0 4px 4px 0; }
-.legend { display: flex; gap: 12px; font-weight: 600; }
+.legend { display: flex; flex-wrap: wrap; gap: 12px; font-weight: 600; }
 .line-chart { width: 100%; }
 
 /* Sidebar */
@@ -184,7 +185,7 @@ body.row-resize { cursor: row-resize; }
 /* Panels lay out header → chart → footer; the chart takes whatever height is left, so a header that
    wraps onto two lines (narrow window or wide sidebar) shrinks the chart instead of pushing it out. */
 .bottom > .panel { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
-.chart-fill { flex: 1; min-height: 0; position: relative; }
+.chart-fill { flex: 1; min-height: 120px; position: relative; } /* never squeezed out by wrapped controls */
 .portfolio-body { flex: 1; }
 .portfolio-chart { height: 100%; }
 .holdings-wrap { overflow: auto; min-width: 0; max-height: 100%; }
