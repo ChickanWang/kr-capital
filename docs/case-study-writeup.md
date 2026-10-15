@@ -1,6 +1,20 @@
 # Case study writeup
 Link to [README](../README.md).
 
+## What I built
+
+A watchlist and screener for the S&P 100, running locally with one `docker compose up`:
+
+- **Data layer:** a Postgres schema where every stock has a permanent ID, and prices and reference data
+  are versioned, so data can be read "as is" or "as was" at an earlier point.
+- **Pipeline:** an ETL CLI (initial load, nightly refresh, catch-up) run by a cron container, with every
+  run recorded in `job_run`, plus on-demand gap filling when a chart finds missing days.
+- **API:** FastAPI with a typed OpenAPI contract that the frontend's types are generated from.
+- **App:** one screen with a sortable, filterable grid, price and return charts comparing up to five
+  stocks, company cards with change history and annotations, and baskets that become portfolios
+  (value, returns, volatility, drawdown, contribution) once they have quantities.
+- **Quality:** tests on the parts most likely to be silently wrong (versioning, splits, portfolio math)
+  and CI checking lint, types, migrations and API/type drift.
 
 ## AI Usage Throughout the Case Study
 
@@ -158,13 +172,43 @@ frontend was checked by hand; it has no tests.
 
 Given more time to productionize this project, next steps could include
 
+- Data validation: automated checks in the ETL (see Data Validation below); the most important one.
+
 - Coverage: user-added tickers, the S&P 500 on a paid tier, dated index membership.
 
-- Data: live prices, a backup source
+- Data: live prices, a backup source, raw Polygon responses stored before parsing so any number can be
+  traced to its source, and bitemporal history (when a change happened, not just when it was recorded).
 
 - Product: a screen-wide "as of" picker to show historical price data, saved screens, authentication.
 
-- Infrastructure: an ETL lock, Celery or Airflow as jobs grow, hosted Postgres, frontend tests.
+- Infrastructure: an ETL lock, progress logging in long jobs, Celery or Airflow as jobs grow, hosted
+  Postgres, frontend tests.
+
+## Growing into a platform
+
+The pieces built here become shared services that new products build on, rather than features of one
+app:
+
+- **Security master.** The permanent `instrument_id` becomes the one ID every product uses, with more
+  identifiers (CUSIP, ISIN), corporate actions and dated index membership.
+- **More data sources** behind the existing provider interface (`app/providers/base.py`), keeping the
+  raw data and tagging every row with its source.
+- **Users and teams:** permissions, and shared baskets and annotations.
+- **Data quality and lineage:** automated checks, and every number traceable to the run and source that
+  produced it.
+
+**Scaling per use case.**
+
+- **Portfolios.** Baskets become accounts with trade and position history, so returns come from actual
+  trades and include cash. Daily figures are computed once by a job and stored instead of recalculated
+  on every request.
+- **Risk.** Factor exposures, correlations, VaR and stress tests are heavier batch work, so they move to
+  an orchestrator (Airflow or Dagster) and an analytics store (Polars or DuckDB first, then a warehouse).
+  Because the data is versioned, any risk report can be rerun as of the date it was produced.
+
+**Infrastructure as it grows.** Run the ETL separately from the API; move to events or a queue so new
+prices trigger the jobs that depend on them; add read replicas or a warehouse for analytics and caching
+for the busiest endpoints; and monitor job failures and stale data, with alerts.
 
 ## Data Validation
 
