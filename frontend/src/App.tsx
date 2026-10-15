@@ -2,6 +2,7 @@ import { useCallback, useMemo, useRef, useState, useSyncExternalStore } from 're
 import { api, type BasketDetail, type InstrumentRow, useFetch } from './api/client'
 import { BasketSidebar } from './components/BasketSidebar'
 import { CompanyCard } from './components/CompanyCard'
+import { HoldingsGrid } from './components/HoldingsGrid'
 import { type GridRow, InstrumentGrid } from './components/InstrumentGrid'
 import { PortfolioPanel } from './components/PortfolioPanel'
 import { PriceChart } from './components/PriceChart'
@@ -23,6 +24,13 @@ function subscribeResize(onChange: () => void) {
 }
 const windowHeight = () => window.innerHeight
 const windowWidth = () => window.innerWidth
+// Bottom panel tabs, shown when the active basket is a portfolio.
+type BottomTab = 'stocks' | 'portfolio' | 'holdings'
+const BOTTOM_TABS: { tab: BottomTab; label: string }[] = [
+  { tab: 'stocks', label: 'Stocks' },
+  { tab: 'portfolio', label: 'Portfolio' },
+  { tab: 'holdings', label: 'Holdings' },
+]
 const sidebarFromPointer = (e: MouseEvent) => e.clientX
 const bottomFromPointer = (e: MouseEvent) => window.innerHeight - e.clientY - 12
 
@@ -62,7 +70,7 @@ export default function App() {
   const viewportWidth = useSyncExternalStore(subscribeResize, windowWidth)
   const sidebar = Math.min(sidebarWidth, Math.max(SIDEBAR_MIN, viewportWidth - MAIN_MIN))
   // 'auto' shows the portfolio when the active basket is one, otherwise stock prices.
-  const [bottomView, setBottomView] = useState<'auto' | 'stocks' | 'portfolio'>('auto')
+  const [bottomView, setBottomView] = useState<'auto' | BottomTab>('auto')
 
   const showNotice = useCallback((message: string) => {
     setNotice(message)
@@ -85,7 +93,7 @@ export default function App() {
   const showAll = basketEmpty || view === 'all'
   const isPortfolio =
     !!basket.data && basket.data.members.length > 0 && basket.data.members.every((m) => m.target_quantity !== null)
-  const showPortfolio = isPortfolio && bottomView !== 'stocks'
+  const tab: BottomTab = !isPortfolio ? 'stocks' : bottomView === 'auto' ? 'portfolio' : bottomView
 
   // With a basket active, rows carry an in_basket flag; "Members only" shows just those.
   const rows = useMemo<GridRow[]>(() => {
@@ -175,21 +183,21 @@ export default function App() {
         <div className="bottom" style={{ height: bottom }}>
           {isPortfolio && (
             <div className="button-group bottom-tabs">
-              <button className={showPortfolio ? '' : 'active'} onClick={() => setBottomView('stocks')}>
-                Stocks
-              </button>
-              <button className={showPortfolio ? 'active' : ''} onClick={() => setBottomView('portfolio')}>
-                Portfolio
-              </button>
+              {BOTTOM_TABS.map((t) => (
+                <button key={t.tab} className={t.tab === tab ? 'active' : ''} onClick={() => setBottomView(t.tab)}>
+                  {t.label}
+                </button>
+              ))}
             </div>
           )}
-          {showPortfolio && basket.data ? (
+          {tab === 'portfolio' && basket.data ? (
             <PortfolioPanel
               // Remount when holdings change, so the returns are refetched.
               key={JSON.stringify(basket.data.members)}
               basket={basket.data}
-              universe={instruments.data ?? []}
             />
+          ) : tab === 'holdings' && basket.data ? (
+            <HoldingsGrid basket={basket.data} universe={instruments.data ?? []} onOpen={setCard} />
           ) : (
             <PriceChart
               focused={focused}

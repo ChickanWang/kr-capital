@@ -1,24 +1,16 @@
 import {
-  colorSchemeDark,
   type ColDef,
   type ICellRendererParams,
   type RowSelectionOptions,
   type SelectionColumnDef,
   type ValueFormatterParams,
-  themeQuartz,
 } from 'ag-grid-community'
 import { AgGridReact } from 'ag-grid-react'
 import { useEffect, useMemo, useRef } from 'react'
 import type { InstrumentRow } from '../api/client'
 import { MAX_SELECTED } from '../constants'
 import { bigMoney, pct, price, signClass } from '../format'
-
-const theme = themeQuartz.withPart(colorSchemeDark).withParams({
-  backgroundColor: '#11161d',
-  headerBackgroundColor: '#161c25',
-  fontSize: 13,
-  spacing: 6,
-})
+import { gridTheme } from './gridTheme'
 
 type Formatter = (p: ValueFormatterParams<GridRow, number | null>) => string
 const asPct: Formatter = (p) => pct(p.value)
@@ -208,7 +200,7 @@ export function InstrumentGrid({
   return (
     <div className="grid">
       <AgGridReact<GridRow>
-        theme={theme}
+        theme={gridTheme}
         rowData={rows}
         columnDefs={columns}
         context={context}

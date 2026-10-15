@@ -180,27 +180,20 @@ body.row-resize { cursor: row-resize; }
 .row-resizer::after { content: ''; position: absolute; left: 0; right: 0; top: 4px; height: 2px; border-radius: 1px; }
 .row-resizer:hover::after, body.row-resize .row-resizer::after { background: var(--accent); opacity: 0.6; }
 
-/* Bottom panel: price chart or portfolio */
+/* Bottom panel: price chart, portfolio or holdings */
 .bottom { display: flex; flex-direction: column; gap: 6px; min-height: 0; }
 /* Panels lay out header → chart → footer; the chart takes whatever height is left, so a header that
    wraps onto two lines (narrow window or wide sidebar) shrinks the chart instead of pushing it out. */
 .bottom > .panel { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
 .chart-fill { flex: 1; min-height: 120px; position: relative; } /* never squeezed out by wrapped controls */
-.portfolio-body { flex: 1; }
-.portfolio-chart { height: 100%; }
-.holdings-wrap { overflow: auto; min-width: 0; max-height: 100%; }
 .bottom-tabs { align-self: flex-start; }
 .portfolio-panel .stats { display: flex; gap: 18px; flex-wrap: wrap; }
 .stat { display: flex; flex-direction: column; gap: 2px; }
 .stat span { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
 .stat strong { font-size: 14px; font-weight: 600; }
-/* minmax(0, 1fr) row: a tall holdings table scrolls instead of stretching the row past the panel. */
-.portfolio-body { display: grid; grid-template-columns: minmax(200px, 1fr) minmax(0, max-content); grid-template-rows: minmax(0, 1fr); gap: 16px; min-height: 0; }
+/* One minmax(0, 1fr) cell: the chart fills the space left under the stats. */
+.portfolio-body { flex: 1; display: grid; grid-template: minmax(0, 1fr) / minmax(0, 1fr); min-height: 120px; }
 .portfolio-chart { min-width: 0; }
-.holdings { border-collapse: collapse; font-size: 12px; align-self: start; }
-.holdings th { color: var(--muted); font-weight: 500; text-align: right; padding: 2px 8px; }
-.holdings td { text-align: right; padding: 3px 8px; border-top: 1px solid var(--border); white-space: nowrap; }
-.holdings th:first-child, .holdings td:first-child { text-align: left; }
 
 /* Company card entry points */
 button.small { padding: 2px 8px; font-size: 12px; font-weight: 500; }
@@ -244,3 +237,10 @@ li.annotation-editing textarea { min-height: 60px; resize: vertical; }
 .annotation-popup li { padding: 4px 0; border-top: 1px solid var(--border); }
 .annotation-popup p { margin: 0 0 2px; white-space: pre-wrap; }
 .annotation-popup span { font-size: 12px; }
+
+/* Holdings screener */
+.holdings-screener { gap: 6px; }
+.holdings-screener .grid { flex: 1; min-height: 0; }
+.holdings-toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; font-size: 12px; }
+.holdings-toolbar input { width: 180px; }
+.clickable-row { cursor: pointer; }

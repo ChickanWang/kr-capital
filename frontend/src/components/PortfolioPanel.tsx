@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { type BasketDetail, type InstrumentRow, type PortfolioPoint, useFetch } from '../api/client'
+import { type BasketDetail, type PortfolioPoint, useFetch } from '../api/client'
 import { pct, price, shortDate, signClass } from '../format'
 import { LineChart, type Line } from './LineChart'
 import { RANGES, type Range, rangeStart, returnLabel } from './ranges'
@@ -14,33 +14,15 @@ const TRADING_DAYS = 252
 const UP = '#3ecf8e'
 const DOWN = '#f2555a'
 
-interface Holding {
-  ticker: string
-  quantity: number
-  last: number
-  value: number
-  weight: number
-  dayReturn: number | null
-  contribution: number | null
-}
-
-/** A portfolio basket (every member has a quantity): summary figures, a value / return chart, and
- * holdings with weights and today's contribution. Computed from the returns endpoint plus the
- * grid's latest closes. */
-export function PortfolioPanel({
-  basket,
-  universe,
-}: {
-  basket: BasketDetail
-  universe: InstrumentRow[]
-}) {
+/** A portfolio basket (every member has a quantity): summary figures and a value / return chart,
+ * computed from the returns endpoint. Its holdings are in the Holdings tab. */
+export function PortfolioPanel({ basket }: { basket: BasketDetail }) {
   const [view, setView] = useState<View>('value')
   const [range, setRange] = useState<Range>('1Y')
   const returns = useFetch<PortfolioPoint[]>(`/baskets/${basket.id}/returns?start=${rangeStart(range)}`)
   const points = useMemo(() => returns.data ?? [], [returns.data])
 
   const stats = useMemo(() => summarise(points), [points])
-  const holdings = useMemo(() => holdingsOf(basket, universe), [basket, universe])
 
   const lines = useMemo<Line[]>(() => {
     if (view === 'value') return [{ name: 'Value', points: points.map((p) => ({ date: p.date, value: p.value })) }]
@@ -99,34 +81,6 @@ export function PortfolioPanel({
         <div className="portfolio-chart">
           <LineChart lines={lines} format={view === 'value' ? 'price' : 'percent'} />
         </div>
-        <div className="holdings-wrap">
-        <table className="holdings">
-          <thead>
-            <tr>
-              <th>Ticker</th>
-              <th>Qty</th>
-              <th>Last</th>
-              <th>Value</th>
-              <th>Weight</th>
-              <th title="Today's move of the stock">1D</th>
-              <th title="The stock's share of today's portfolio return">Contrib.</th>
-            </tr>
-          </thead>
-          <tbody>
-            {holdings.map((h) => (
-              <tr key={h.ticker}>
-                <td>{h.ticker}</td>
-                <td>{h.quantity.toLocaleString('en-US')}</td>
-                <td>{price(h.last)}</td>
-                <td>{price(h.value)}</td>
-                <td>{pct(h.weight, 1).replace('+', '')}</td>
-                <td className={signClass(h.dayReturn)}>{pct(h.dayReturn)}</td>
-                <td className={signClass(h.contribution)}>{pct(h.contribution)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        </div>
       </div>
     </section>
   )
@@ -172,35 +126,4 @@ function summarise(points: PortfolioPoint[]) {
     best: byValue.length ? { ...byValue[byValue.length - 1], date: shortDate(byValue[byValue.length - 1].date) } : none,
     worst: byValue.length ? { ...byValue[0], date: shortDate(byValue[0].date) } : none,
   }
-}
-
-/** Each holding's market value and weight at the latest close, and its contribution to today's
- * portfolio return: quantity × (today's close − yesterday's close) ÷ yesterday's portfolio value.
- * Contributions add up to the portfolio's daily return. */
-function holdingsOf(basket: BasketDetail, universe: InstrumentRow[]): Holding[] {
-  const byId = new Map(universe.map((r) => [r.instrument_id, r]))
-  const rows = basket.members.flatMap((m) => {
-    const row = byId.get(m.instrument_id)
-    if (!row || row.last_price === null || m.target_quantity === null) return []
-    const quantity = Number(m.target_quantity)
-    const last = row.last_price
-    const prevClose = row.ret_1d === null ? null : last / (1 + row.ret_1d)
-    return [{ ticker: row.ticker, quantity, last, prevClose, dayReturn: row.ret_1d }]
-  })
-  const total = rows.reduce((sum, r) => sum + r.quantity * r.last, 0)
-  const prevTotal = rows.every((r) => r.prevClose !== null)
-    ? rows.reduce((sum, r) => sum + r.quantity * r.prevClose!, 0)
-    : null
-  return rows
-    .map((r) => ({
-      ticker: r.ticker,
-      quantity: r.quantity,
-      last: r.last,
-      value: r.quantity * r.last,
-      weight: total ? (r.quantity * r.last) / total : 0,
-      dayReturn: r.dayReturn,
-      contribution:
-        prevTotal && r.prevClose !== null ? (r.quantity * (r.last - r.prevClose)) / prevTotal : null,
-    }))
-    .sort((a, b) => Math.abs(b.value) - Math.abs(a.value))
 }
