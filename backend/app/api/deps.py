@@ -2,7 +2,6 @@
 
 import uuid
 from datetime import UTC, date, datetime, time
-from functools import lru_cache
 from typing import Annotated
 from zoneinfo import ZoneInfo
 
@@ -57,9 +56,15 @@ def as_of_cutoff(as_of: str | None = None) -> datetime | None:
 AsOfDep = Annotated[datetime | None, Depends(as_of_cutoff)]
 
 
-@lru_cache(maxsize=1)
-def gap_filler() -> GapFiller:
-    polygon = PolygonClient(
+# One instance for the whole process: its per-stock cooldown and the client's rate limiter only work
+# if every request shares them.
+_GAP_FILLER = GapFiller(
+    PolygonClient(
         settings.polygon_api_key, settings.polygon_base_url, settings.polygon_calls_per_minute
-    )
-    return GapFiller(polygon, settings.gap_fill_cooldown_seconds)
+    ),
+    settings.gap_fill_cooldown_seconds,
+)
+
+
+def gap_filler() -> GapFiller:
+    return _GAP_FILLER
