@@ -110,7 +110,7 @@ The goal was that `docker compose up` shows a full grid within seconds, even for
 Polygon key. A live first load can't do that: ~200 calls at 5/min is ~40 minutes of an empty grid, and
 nothing at all without a key. So startup (`bootstrap`) works in two steps:
 
-- **Seed snapshot.** `seed/` holds a gzipp copy of the two market-data tables, 
+- **Seed snapshot.** `seed/` holds a gzipped copy of the two market-data tables,
   restored into an empty database in a few seconds.
 - **Top-up.** The snapshot is out of date as soon as it's committed, so `topup` fetches only the trading
   days after the newest stored bar. It stops at the first day Polygon refuses (the free plan serves a day's bars only after midnight ET) and the next run picks it
