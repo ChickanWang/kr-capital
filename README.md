@@ -4,8 +4,7 @@ A watchlist and basic screener for the S&P 100: a sortable grid of the universe,
 cards with versioned reference data and annotations, and baskets / mock portfolios with return analytics.
 FastAPI + Postgres backend, React + TypeScript frontend, Polygon.io as the only data source.
 
-The full design log (schema, every decision, and what was tried and replaced) is in
-[docs/design-decisions.md](docs/design-decisions.md).
+The case study writeup is in [docs/case-study-writeup.md](docs/case-study-writeup.md).
 
 ## Run it
 
@@ -50,68 +49,31 @@ Polygon.io ──▶ ETL (CLI, run by cron) ──▶ Postgres ◀── FastAPI
 The API answers from Postgres. The one exception is on-demand gap filling: a chart request that finds
 missing trading days fetches them from Polygon, stores them, then reads from the database.
 
-## Data model
-
-| Table | Holds |
-|---|---|
-| `instrument_metadata` | Per stock: UUID, ticker, FIGI, name, industry, shares, profile. Insert-only, versioned |
-| `instrument_daily_price` | Split-adjusted daily bars. Insert-only, versioned |
-| `basket`, `basket_member` | Named groups of stocks, with optional target quantities |
-| `annotation` | A user's note on a stock, optionally dated; editable by its author |
-| `job_run` | One row per ETL run |
-| `instrument_snapshot` (view) | The grid's rows, computed on read |
-
-Rows in the two versioned tables are never updated: a change inserts a new row stamped with `data_version`
-(the start time of the ETL run). The latest row is "as is"; `?as_of=<date|timestamp>` on versions, prices
-and portfolio returns reads the data "as was", so an analysis pinned to one `as_of` stays consistent.
-`instrument_id` is a UUID, so a ticker change (FB → META) keeps its history; a FIGI can't belong to two
-instruments (database constraint).
-
 ## API
 
-`GET /instruments` · `/instruments/{ticker}` · `…/prices?start&end&mode&as_of` · `…/versions?as_of` ·
-`…/annotations` (+ `PATCH`/`DELETE …/{id}`) · `/baskets` (+ members, `…/returns`) · `/jobs` · `/health`.
-Spec in `backend/openapi.json`; the frontend's types are generated from it.
+Stocks are addressed by their current ticker. `as_of` takes a date (end of that day, New York time) or a
+timestamp and reads the data as it was stored then.
 
-## Key decisions
+| Method | Route | Purpose |
+|---|---|---|
+| GET | `/instruments` | The grid: one row per stock (last close, 1D / 1M / YTD return, market cap, annotation count) |
+| GET | `/instruments/{ticker}` | Current details ("as is") |
+| GET | `/instruments/{ticker}/versions?as_of` | Every reference-data version, oldest first; with `as_of`, the version current then ("as was") |
+| GET | `/instruments/{ticker}/prices?start&end&mode&as_of` | Split-adjusted daily bars; `mode` = `price` (default), `daily` or `cumulative` returns. Missing days are fetched and stored first, unless `as_of` is given |
+| GET | `/instruments/{ticker}/annotations` | Annotations, newest first |
+| POST | `/instruments/{ticker}/annotations` | Add an annotation (optionally dated) |
+| PATCH | `/instruments/{ticker}/annotations/{annotation_id}` | Edit your own annotation |
+| DELETE | `/instruments/{ticker}/annotations/{annotation_id}` | Delete your own annotation |
+| GET | `/baskets` | List baskets |
+| POST | `/baskets` | Create a basket |
+| GET | `/baskets/{basket_id}` | A basket and its members |
+| DELETE | `/baskets/{basket_id}` | Delete a basket |
+| POST | `/baskets/{basket_id}/members` | Add a stock, or update its `target_quantity` |
+| DELETE | `/baskets/{basket_id}/members/{ticker}` | Remove a stock |
+| GET | `/baskets/{basket_id}/returns?start&end&as_of` | Portfolio value and daily / cumulative returns (every member needs a quantity) |
+| GET | `/jobs?limit` | Recent ETL runs (default 20) |
+| GET | `/health` | Health check |
 
-- **One data source (Polygon).** An earlier multi-source build (OpenFIGI, yfinance fallback, intraday
-  quotes) tripled the integration surface; Polygon's ticker details already include the FIGI.
-- **Hybrid loading:** a one-off load, nightly refreshes, and on-demand gap fill. Pure ETL or pure on-the-fly
-  each fail the screener (nothing new until the next run / an empty grid until each name is viewed).
-- **Versioned, insert-only data** instead of a change-log table or a valid-to column: the versions are the
-  audit trail, and a split shows up as new versions of past bars rather than rewritten history.
-- **Split-adjusted prices only,** exclusive of dividends (price returns).
-- **No live quotes.** The free plan is end-of-day and releases a day's bars just after midnight ET (the
-  current day is refused with HTTP 403), so the app shows the last stored close, and the nightly jobs run
-  at 06:00 ET Tue–Sat to store the previous day's close as early as the plan allows.
-- **Fixed S&P 100 universe,** sized to the free tier (5 calls/min, 2 years of history).
-- **Computed on read:** returns, portfolio values, market cap and the grid view; nothing derived is stored.
-- **One basket model** for themes, watchlists and portfolios; quantities decide what the app can do.
-- **Cron (Supercronic) over Airflow:** one daily chain doesn't justify an orchestrator.
+Interactive docs at `localhost:8000/docs`; spec in `backend/openapi.json`, from which the frontend's types
+are generated.
 
-## Assumptions and known limitations
-
-- Prices are the previous close, stored by the 06:00 ET run; the page loads data once, so refresh to see them.
-- Polygon free tier: 5 calls/min and 2 years of history, so a split can't re-version bars older than that.
-- Polygon is a single point of failure: the app keeps serving stored data, but nothing new arrives.
-- No authentication: one mock user id is stamped on writes. ETL jobs are not prevented from overlapping.
-- Industry is Polygon's SIC classification, not GICS sectors.
-
-## How it was checked
-
-- **41 backend tests** (pytest, real Postgres, Polygon fixtures): versioning and ticker rename/reuse, price
-  versioning and splits, startup top-up and nightly refresh, returns and portfolio math, annotations, API.
-- **Spot checks against hand calculation:** NVDA year-over-year (+21.35% = $228.52 ÷ $188.32 − 1), portfolio
-  value against its holdings, and contributions summing to the portfolio's daily return.
-- **CI** (GitHub Actions): ruff, mypy, pytest, migrations match the models, OpenAPI spec and generated
-  frontend types up to date, frontend lint and build.
-- **Gaps:** no frontend tests (the UI was checked by hand in the browser); prices were not cross-checked
-  against a second source.
-
-## Next steps
-
-- A Polygon plan with intraday data for live prices; refresh the seed snapshot on a schedule.
-- A second source as a backup; GICS sectors; an index benchmark for portfolios; a screen-wide "as of" picker.
-- Authentication and per-user workspaces; an ETL lock; frontend tests; Redis/Celery or Airflow as jobs grow.
-- Platform: treat instruments and prices as a shared service that portfolio, risk and research apps read by UUID.

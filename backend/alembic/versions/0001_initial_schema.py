@@ -3,7 +3,7 @@
 Four groups of tables:
   1. Reference data  - each stock's identifiers and details, versioned over time
   2. Market data     - split-adjusted daily price bars
-  3. Workspace       - baskets (named groups of stocks, optionally with quantities) and notes
+  3. Workspace       - baskets (named groups of stocks, optionally with quantities) and annotations
   4. Operations      - ETL run history, and the grid view
 
 Versioned rows are insert-only and stamped with `data_version` (when we learned the value).
@@ -15,6 +15,9 @@ store it without a foreign key. Every id in the schema is a UUID.
 Revision ID: 0001
 Revises:
 Create Date: 2026-10-14
+
+Migrations 0002-0005 (FIGI constraint, company profile fields, dated and editable notes, the rename
+of notes to annotations) were folded into this one before release.
 """
 
 from collections.abc import Sequence
@@ -32,7 +35,7 @@ depends_on: str | Sequence[str] | None = None
 INSTRUMENT_METADATA = """
 -- One version of a stock's identifiers and details. A change inserts a new row; the latest row
 -- per instrument_id is current. A ticker change (FB -> META) is just a new row with the same
--- instrument_id, so prices, baskets and notes keyed by instrument_id are unaffected.
+-- instrument_id, so prices, baskets and annotations keyed by instrument_id are unaffected.
 CREATE TABLE instrument_metadata (
     instrument_id       UUID        NOT NULL,
     ticker              TEXT,                   -- NULL: ticker taken over by another stock
@@ -45,6 +48,13 @@ CREATE TABLE instrument_metadata (
     shares_outstanding  BIGINT,
     listing_status      VARCHAR(16) NOT NULL,
     data_version        TIMESTAMPTZ NOT NULL,
+    -- company profile, from the same Polygon call
+    description         TEXT,
+    homepage_url        TEXT,
+    total_employees     INTEGER,
+    list_date           DATE,
+    hq_city             TEXT,
+    hq_state            TEXT,
 
     CONSTRAINT ck_metadata_status
         CHECK (listing_status IN ('ACTIVE', 'DELISTED')),
@@ -57,6 +67,12 @@ CREATE TABLE instrument_metadata (
 INSTRUMENT_METADATA_INDEXES = [
     "CREATE INDEX ix_metadata_ticker ON instrument_metadata (ticker)",
     "CREATE INDEX ix_metadata_figi ON instrument_metadata (figi)",
+    # Versions repeat a FIGI, but a FIGI must never belong to two instruments (e.g. two loads racing
+    # to create the same stock). btree_gist lets a GiST index compare plain values with = and <>.
+    # Rows without a FIGI are not checked.
+    "CREATE EXTENSION IF NOT EXISTS btree_gist",
+    "ALTER TABLE instrument_metadata ADD CONSTRAINT ex_metadata_figi_one_instrument "
+    "EXCLUDE USING gist (figi WITH =, instrument_id WITH <>)",
 ]
 
 
@@ -116,21 +132,24 @@ CREATE TABLE basket_member (
 )
 """
 
-NOTE = """
--- Append-only: the API has no edit or delete.
-CREATE TABLE note (
-    id             UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-    instrument_id  UUID        NOT NULL,
-    author         TEXT        NOT NULL,
-    body           TEXT        NOT NULL,
-    created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+ANNOTATION = """
+-- A user's commentary on a stock, optionally about a given day (e.g. an earnings date). Not market
+-- data, so not versioned: the author can edit (edited_at records when) or delete it.
+CREATE TABLE annotation (
+    id               UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    instrument_id    UUID        NOT NULL,
+    author           TEXT        NOT NULL,
+    body             TEXT        NOT NULL,
+    created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+    annotation_date  DATE,
+    edited_at        TIMESTAMPTZ,
 
-    CONSTRAINT ck_note_body CHECK (length(body) > 0)
+    CONSTRAINT ck_annotation_body CHECK (length(body) > 0)
 )
 """
 
-NOTE_INDEXES = [
-    "CREATE INDEX ix_note_instrument_time ON note (instrument_id, created_at)",
+ANNOTATION_INDEXES = [
+    "CREATE INDEX ix_annotation_instrument_time ON annotation (instrument_id, created_at)",
 ]
 
 
@@ -213,8 +232,8 @@ def upgrade() -> None:
         BASKET,
         *BASKET_INDEXES,
         BASKET_MEMBER,
-        NOTE,
-        *NOTE_INDEXES,
+        ANNOTATION,
+        *ANNOTATION_INDEXES,
         JOB_RUN,
         INSTRUMENT_SNAPSHOT,
     ]
@@ -226,7 +245,7 @@ def downgrade() -> None:
     op.execute("DROP VIEW IF EXISTS instrument_snapshot")
     for table in [
         "job_run",
-        "note",
+        "annotation",
         "basket_member",
         "basket",
         "instrument_daily_price",
