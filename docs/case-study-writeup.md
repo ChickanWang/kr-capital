@@ -1,18 +1,22 @@
 # Case study writeup
-link to [README](../README.md).
+Link to [README](../README.md).
 
 
 ## AI Usage Throughout the Case Study
 
-Before getting started prompting Claude to start on coding, I chatted with it about how to model the data, subsequently which endpoints were needed from the data, and finally, what frontend features would exist. It was an iterative process, where I would let it run amok, review its code, and ask for improvements. The design was settled before any coding began.
+Before getting started prompting Claude to start on coding, I chatted with it about how to model the data, subsequently which endpoints were needed from the data, and finally, what frontend features would exist. It was an iterative process, where I would let it draft a first pass, then reviewed it and asked for changes. The data model was settled before coding; the UI and some ETL details changed as I used the app.
 
 A helpful Claude skill that I used was [grill-me](https://www.aihero.dev/skills-grill-me), where I essentially rubber duckyed to Claude until the mental model for the app I would build became fleshed out.
 
 ## Rubric for Success
 
-When judging signal after Claude has done its job, I approach it much like a PR review, where I'll skim through the code asking questions about design. Quick spot checks I use are if I can understand what's being outputted at a high level, as well as jumping to ways to test the backend/frontend myself manually. I also tried limiting the scope of the design as much as I could, and slowly expand on it after rather than starting off and biting off more than Claude could chew.
+To decide whether Claude's output was good enough, I checked 2 things:
 
-With the product design, it's important that all the numbers look reasonable at first glance, and using the app a lot gave me a sense of how "seamless" the experience would be for end users, as well as any feature gaps.
+- **The code reads like a PR I'd approve.** I reviewed each change like a PR, if I couldn't explain or justify it, it went back for changes.
+- **The product works for someone using it.** I did a lot of manual testing, which is where most of the UI changes in the Frontend section came from.
+
+I also kept the scope small and expanded it step by step, rather than asking for everything at once and
+reviewing a large change I couldn't fully check.
 
 ## Tradeoffs
 
@@ -91,7 +95,6 @@ and run full refreshes overnight.
 - **Market cap** is the latest close × Polygon's share-class shares outstanding, so GOOG and GOOGL each
   show their own class, not Alphabet's total.
 - **`data_version`** is when the app learned of a change, not when it happened.
-- **Single user, run locally:** hence no login and no lock on ETL jobs.
 
 ## Data sourcing
 
@@ -127,7 +130,6 @@ every stock's latest close. The snapshot is ~1 MB in git and has to be refreshed
 - **Annotations.** Free text, optionally dated, newest first. They began append-only, but that made typos
   permanent, so authors can edit or delete their own.
 - **Analytics on request.** ~100 stocks × 500 days computes in milliseconds and is never stale.
-- **Users and universe.** No login: a mock user id is stamped on writes. The S&P 100 list is fixed.
 
 ## Frontend
 
@@ -166,8 +168,6 @@ Given more time to productionize this project, next steps could include
 - Product: a screen-wide "as of" picker to show historical price data, saved screens, authentication.
 
 - Infrastructure: an ETL lock, Celery or Airflow as jobs grow, hosted Postgres, frontend tests.
-
-- Stack: Potentially migrate to Polars from Pandas for a performance boost
 
 ## Data Validation
 
