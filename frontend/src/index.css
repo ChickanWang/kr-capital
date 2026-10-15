@@ -1,0 +1,245 @@
+:root {
+  --bg: #0b0f14;
+  --panel: #11161d;
+  --panel-2: #161c25;
+  --border: #232c38;
+  --text: #d7dde5;
+  --muted: #7d8794;
+  --accent: #4ea1ff;
+  --up: #3ecf8e;
+  --down: #f2555a;
+  font-family: Inter, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 14px;
+  color: var(--text);
+  background: var(--bg);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; }
+h1 { font-size: 15px; font-weight: 600; margin: 0; }
+h2 { font-size: 20px; margin: 0; }
+h3 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 16px 0 8px; }
+
+button {
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 5px 10px;
+  font: inherit;
+  cursor: pointer;
+}
+button:hover:not(:disabled) { border-color: var(--accent); }
+button:disabled { opacity: 0.45; cursor: default; }
+button.active { background: var(--accent); border-color: var(--accent); color: #0b0f14; }
+button.icon { background: none; border: none; color: var(--muted); font-size: 18px; padding: 0 6px; }
+button.icon:hover { color: var(--down); }
+button.link { background: none; border: none; padding: 0; text-align: left; flex: 1; }
+
+input, textarea {
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 5px 8px;
+  font: inherit;
+}
+input:focus, textarea:focus { outline: 1px solid var(--accent); }
+
+.muted { color: var(--muted); }
+.error { color: var(--down); margin: 6px 0; }
+.hint { color: var(--muted); font-size: 12px; margin: 4px 0 0; }
+.up { color: var(--up); }
+.down { color: var(--down); }
+
+/* Layout */
+.app {
+  position: relative;
+  display: grid;
+  grid-template-columns: 240px 1fr; /* overridden inline with the sidebar's current width */
+  grid-template-rows: auto 1fr;
+  height: 100vh;
+}
+.topbar {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+}
+.main {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto auto; /* grid, drag handle, bottom panel */
+  gap: 0;
+  padding: 12px;
+  min-height: 0;
+  min-width: 0; /* let the grid and chart shrink when the sidebar widens */
+}
+.grid { min-height: 140px; }
+.panel { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; }
+.panel-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+.controls { display: flex; gap: 12px; }
+.button-group { display: flex; }
+.button-group button { border-radius: 0; margin-left: -1px; }
+.button-group button:first-child { border-radius: 4px 0 0 4px; }
+.button-group button:last-child { border-radius: 0 4px 4px 0; }
+.legend { display: flex; gap: 12px; font-weight: 600; }
+.line-chart { width: 100%; }
+
+/* Sidebar */
+.sidebar { border-right: 1px solid var(--border); background: var(--panel); padding: 0 12px 12px; overflow-y: auto; }
+.inline-form { display: flex; gap: 6px; }
+.inline-form input { flex: 1; min-width: 0; }
+.basket-list { list-style: none; padding: 0; margin: 8px 0; }
+.basket-list li { display: flex; align-items: center; padding: 4px 6px; border-radius: 4px; }
+.basket-list li.active { background: var(--panel-2); outline: 1px solid var(--accent); }
+.active-basket { border-top: 1px solid var(--border); margin-top: 8px; }
+.members { width: 100%; border-collapse: collapse; margin: 8px 0; }
+.members th { text-align: left; color: var(--muted); font-weight: 500; font-size: 12px; }
+.members td { padding: 3px 0; }
+input.qty { width: 80px; }
+.portfolio p { margin: 8px 0; }
+
+/* Company card drawer */
+.drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 400px;
+  height: 100vh;
+  overflow-y: auto;
+  background: var(--panel);
+  border-left: 1px solid var(--border);
+  box-shadow: -8px 0 24px rgb(0 0 0 / 0.4);
+  padding: 16px;
+  z-index: 10;
+}
+.drawer-header { display: flex; justify-content: space-between; align-items: flex-start; }
+.drawer-header p { margin: 4px 0 0; }
+.details { display: grid; grid-template-columns: 1fr; gap: 6px; margin: 0; }
+.details div { display: flex; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--border); padding-bottom: 4px; }
+.details dt { color: var(--muted); }
+.details dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
+.history, .annotations { list-style: none; padding: 0; margin: 0; }
+.history li { padding: 4px 0; }
+.history s { color: var(--muted); }
+.annotation-form { display: flex; flex-direction: column; gap: 6px; }
+.annotation-form textarea { min-height: 60px; resize: vertical; }
+.annotation-form button { align-self: flex-end; }
+.annotations li { border-bottom: 1px solid var(--border); padding: 8px 0; }
+.annotations p { margin: 0 0 4px; white-space: pre-wrap; }
+.annotations span { font-size: 12px; }
+
+/* Grid cell colours (AG Grid cellClass) */
+.ag-cell.up { color: var(--up); }
+.ag-cell.down { color: var(--down); }
+
+/* Basket stock search */
+.stock-search { position: relative; margin: 8px 0; }
+.stock-search input { width: 100%; }
+.matches {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 4px 0;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+.matches li button { width: 100%; padding: 4px 8px; display: flex; gap: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.matches li button:hover { background: var(--bg); }
+.notice { margin-left: auto; color: #f5a623; }
+
+/* Basket membership in the grid */
+.grid-area { display: flex; flex-direction: column; gap: 8px; min-height: 0; overflow: hidden; }
+.grid-area .grid { flex: 1; }
+.grid-toolbar { display: flex; align-items: center; gap: 12px; }
+button.star { background: none; border: none; padding: 0 4px; font-size: 16px; color: var(--muted); }
+button.star.on { color: #f5c542; }
+button.star:hover { color: #f5c542; }
+
+/* Sidebar drag handle */
+.resizer {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  cursor: col-resize;
+  z-index: 5;
+}
+.resizer:hover, body.resizing .resizer { background: var(--accent); opacity: 0.5; }
+body.resizing { user-select: none; }
+body.col-resize { cursor: col-resize; }
+body.row-resize { cursor: row-resize; }
+
+/* Bottom panel drag handle */
+.row-resizer { height: 10px; cursor: row-resize; position: relative; }
+.row-resizer::after { content: ''; position: absolute; left: 0; right: 0; top: 4px; height: 2px; border-radius: 1px; }
+.row-resizer:hover::after, body.row-resize .row-resizer::after { background: var(--accent); opacity: 0.6; }
+
+/* Bottom panel: price chart or portfolio */
+.bottom { display: flex; flex-direction: column; gap: 6px; min-height: 0; }
+/* Panels lay out header → chart → footer; the chart takes whatever height is left, so a header that
+   wraps onto two lines (narrow window or wide sidebar) shrinks the chart instead of pushing it out. */
+.bottom > .panel { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
+.chart-fill { flex: 1; min-height: 0; position: relative; }
+.portfolio-body { flex: 1; }
+.portfolio-chart { height: 100%; }
+.holdings-wrap { overflow: auto; min-width: 0; max-height: 100%; }
+.bottom-tabs { align-self: flex-start; }
+.portfolio-panel .stats { display: flex; gap: 18px; flex-wrap: wrap; }
+.stat { display: flex; flex-direction: column; gap: 2px; }
+.stat span { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
+.stat strong { font-size: 14px; font-weight: 600; }
+/* minmax(0, 1fr) row: a tall holdings table scrolls instead of stretching the row past the panel. */
+.portfolio-body { display: grid; grid-template-columns: minmax(200px, 1fr) minmax(0, max-content); grid-template-rows: minmax(0, 1fr); gap: 16px; min-height: 0; }
+.portfolio-chart { min-width: 0; }
+.holdings { border-collapse: collapse; font-size: 12px; align-self: start; }
+.holdings th { color: var(--muted); font-weight: 500; text-align: right; padding: 2px 8px; }
+.holdings td { text-align: right; padding: 3px 8px; border-top: 1px solid var(--border); white-space: nowrap; }
+.holdings th:first-child, .holdings td:first-child { text-align: left; }
+
+/* Company card entry points */
+button.small { padding: 2px 8px; font-size: 12px; font-weight: 500; }
+button.cell-icon { background: none; border: none; padding: 0 4px; color: var(--muted); font-size: 14px; }
+button.cell-icon:hover { color: var(--accent); }
+button.cell-icon.has-annotations { color: var(--text); font-size: 12px; }
+.legend { align-items: center; }
+
+/* Company card */
+.drawer a { color: var(--accent); font-size: 12px; text-decoration: none; }
+.drawer a:hover { text-decoration: underline; }
+.description { margin: 0 0 10px; line-height: 1.45; color: var(--text); }
+button.link.inline { color: var(--accent); flex: none; font-size: 12px; }
+.annotation-actions { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.annotation-actions label { font-size: 12px; display: flex; align-items: center; gap: 6px; }
+.annotation-actions input[type='date'] { padding: 3px 6px; }
+.annotation-date { font-size: 12px; color: #f5c542; }
+
+/* Annotation editing */
+.annotation-meta { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.annotation-buttons { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+button.small-icon { font-size: 14px; padding: 0 4px; }
+li.annotation-editing { display: flex; flex-direction: column; gap: 6px; }
+li.annotation-editing textarea { min-height: 60px; resize: vertical; }
+
+/* Popup shown when a dot on the chart is clicked */
+.annotation-popup {
+  position: absolute;
+  z-index: 8;
+  width: 280px;
+  max-height: 220px;
+  overflow-y: auto;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.5);
+}
+.annotation-popup header { display: flex; justify-content: space-between; align-items: center; }
+.annotation-popup ul { list-style: none; margin: 6px 0; padding: 0; }
+.annotation-popup li { padding: 4px 0; border-top: 1px solid var(--border); }
+.annotation-popup p { margin: 0 0 2px; white-space: pre-wrap; }
+.annotation-popup span { font-size: 12px; }
