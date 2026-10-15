@@ -1,0 +1,12 @@
+# Nightly ETL, New York time. Supercronic reads this file; logs go to the container's stdout.
+CRON_TZ=America/New_York
+#
+# Tuesday to Saturday at 06:00. The free Polygon plan serves a day's bars only from just after midnight
+# New York time on the NEXT day (a same-day request is refused with HTTP 403), so a run at 06:00 stores
+# the previous day's close, before the market opens: Tuesday stores Monday's, ..., Saturday stores
+# Friday's. There is no Monday run because Saturday's already covers Friday. (An earlier 17:00 weekday
+# schedule assumed the close was available the same evening, so the grid lagged by a further day.)
+#
+# Full price refresh (a new version for any bar that changed, which catches splits), then reference
+# data. `;` so a partial price failure doesn't skip the reference job.
+0 6 * * 2-6 python -m app.etl prices; python -m app.etl reference

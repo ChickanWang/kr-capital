@@ -1,0 +1,32 @@
+{
+  "request_id": "fixture",
+  "status": "OK",
+  "results": {
+    "ticker": "AAPL",
+    "name": "Apple Inc.",
+    "market": "stocks",
+    "locale": "us",
+    "primary_exchange": "XNAS",
+    "type": "CS",
+    "active": true,
+    "currency_name": "usd",
+    "cik": "0000320193",
+    "composite_figi": "BBG000B9XRY4",
+    "share_class_figi": "BBG001S5N8V8",
+    "market_cap": 3500000000000.0,
+    "sic_code": "3571",
+    "sic_description": "ELECTRONIC COMPUTERS",
+    "share_class_shares_outstanding": 14840390000,
+    "weighted_shares_outstanding": 14840390000,
+    "list_date": "1980-12-12",
+    "description": "Apple designs a wide variety of consumer electronic devices, including smartphones (iPhone), tablets (iPad), PCs (Mac), smartwatches (Apple Watch) and AirPods.",
+    "homepage_url": "https://www.apple.com",
+    "total_employees": 161000,
+    "address": {
+      "address1": "ONE APPLE PARK WAY",
+      "city": "CUPERTINO",
+      "state": "CA",
+      "postal_code": "95014"
+    }
+  }
+}

@@ -1,0 +1,14 @@
+.env
+__pycache__/
+*.pyc
+.venv/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+node_modules/
+dist/
+.DS_Store
+# Leftover agent skills from a mistaken bulk install; not part of this project
+.agents/
+.claude/
+skills-lock.json
