@@ -101,10 +101,24 @@ and run full refreshes overnight.
   after midnight ET. So the app shows the last stored close.
 - **Schedule: 06:00 ET, Tue–Sat,** storing the previous day's close. The first schedule (weekdays 17:00)
   assumed same-evening availability and left the grid about 11 hours staler than necessary.
-- **Seed snapshot.** A first live load takes ~40 minutes and needs a key, so `seed/` (~1.1 MB, closes
-  through 2026-10-14) is restored into an empty database in seconds, then `topup` catches up.
 - **Cron (Supercronic) over Airflow.** The ETL is a CLI sharing code with the API; a scheduler container
   runs it nightly and `job_run` records history. Airflow is several containers for one daily chain.
+
+### First load: seed snapshot + top-up
+
+The goal was that `docker compose up` shows a full grid within seconds, even for a reviewer without a
+Polygon key. A live first load can't do that: ~200 calls at 5/min is ~40 minutes of an empty grid, and
+nothing at all without a key. So startup (`bootstrap`) works in two steps:
+
+- **Seed snapshot.** `seed/` holds a gzipp copy of the two market-data tables, 
+  restored into an empty database in a few seconds.
+- **Top-up.** The snapshot is out of date as soon as it's committed, so `topup` fetches only the trading
+  days after the newest stored bar. It stops at the first day Polygon refuses (the free plan serves a day's bars only after midnight ET) and the next run picks it
+  up.
+
+**Why not the alternatives.** Running the full `prices` refresh on startup is correct but takes ~20
+minutes (one call per stock). Filling only on demand would leave the grid empty, because the grid needs
+every stock's latest close. The snapshot is ~1 MB in git and has to be refreshed by hand with `dump-seed`.
 
 ## Product
 
@@ -158,9 +172,16 @@ Given more time to productionize this project, next steps could include
 ## Data Validation
 
 Checking for data errors stopped at unit tests and hand calculations; there isn't an automated scan of the
-data itself. A single outlier query (largest one-day moves) found BNY's history apparently mixing two securities
-under one ticker: about $10 until 2026-02-06, then about $139 from 2026-05-21, which reads as a +1,262%
-day. So that line was drawn too early. The cheapest fix with the biggest payoff would be an automated
-data-quality check in the ETL, for example flagging any daily move over 50%.
+data itself. The cheapest fix with the biggest payoff would be an automated data-quality check in the ETL, 
+for example flagging any daily move over 50%.
+
+Examples of checks it could run after each job, flagging rows instead of blocking the load:
+
+- **Price jumps:** a daily move over a threshold (e.g. 50%) that no known split explains.
+- **Bar sanity:** low ≤ open, close ≤ high; prices above zero; volume not negative and not zero on a
+  trading day.
+- **Gaps:** a stock missing a trading day that the other stocks have (`topup` doesn't fill these)
+- **Stale data:** the same close and volume for several days in a row, which usually means a frozen feed.
+- **Coverage:** every ticker in the universe file has a current instrument row and recent prices.
 
 This is probably the most important step before productionizing.
